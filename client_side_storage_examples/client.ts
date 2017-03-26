@@ -8,7 +8,7 @@ import { AddRequest } from './types/types';
 // Variables
 
 const dbHandler = new IndexedDBHandler();
-const data: AddRequest = {item: {name: 'Simon', email: 'simon@test.be'}}
+const data: AddRequest = {item: {name: 'Simon', email: 'simon@test.be', hobbies: ['cycling', 'swimming']}}
 
 // functions
 
@@ -72,11 +72,16 @@ $("#GETALL").click(function(){
         dbHandler.getAllData();
     });
 
+$("#GETALLRANGE").click(function(){
+        dbHandler.getAllDataWithRange('lucas');
+    });
+
 // Setting the main functions
 
 $(document).ready(() => {
     
-    dbHandler.preloadData([{item: {name: 'Lucas', email: 'lucas@test.be'}}, {item: {name: 'Peter', email: 'Peter@test.be'}}])
+    dbHandler.preloadData([data, {item: {name: 'Lucas', email: 'lucas@test.be', hobbies: ['hiking', 'poker']}}, 
+        {item: {name: 'Peter', email: 'peter@test.be', hobbies: ['playing games', 'hiking']}}])
     dbHandler.initIndexedDB();
     // dbHandler.addItem(data) // adding item to store
 })

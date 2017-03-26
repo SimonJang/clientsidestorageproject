@@ -14,7 +14,7 @@ var IndexedDBHandler = (function () {
     IndexedDBHandler.prototype.initIndexedDB = function () {
         var _this = this;
         if (IndexedDBHandler.checkIndexedDBSupport) {
-            var database_1 = indexedDB.open('testdbv2', ++this.version);
+            var database_1 = indexedDB.open('testdbv2', 6);
             database_1.onsuccess = function (e) {
                 console.log('Entering onsucces');
                 _this.workableDB = database_1.result;
@@ -63,6 +63,20 @@ var IndexedDBHandler = (function () {
             }
         };
     };
+    IndexedDBHandler.prototype.getAllDataWithRange = function (upperbound) {
+        if (!this.os) {
+            var transaction = this.workableDB.transaction([this.storeName.toString()], 'readwrite');
+            this.os = transaction.objectStore(this.storeName);
+        }
+        if (!this.documentIndex) {
+            this.documentIndex = this.os.index('defaultindex');
+        }
+        var range = IDBKeyRange.upperBound(upperbound);
+        var cursor = this.documentIndex.openCursor(range);
+        cursor.onsuccess = function () {
+            console.log(JSON.stringify(cursor.result['value']));
+        };
+    };
     IndexedDBHandler.prototype.updateItem = function (data) {
         var _this = this;
         var response = this.getItem(data.item['email']);
@@ -84,11 +98,19 @@ var IndexedDBHandler = (function () {
             console.log('Creating object store');
             this.os = dbInstance.createObjectStore(this.storeName, { keyPath: 'email' });
             this.createDefaultIndex(this.os);
+            this.multifieldIndex = this.os.createIndex('multifield', 'hobbies', { unique: false, multiEntry: true });
+        }
+        else {
+            console.log('Deleting and recreating object store');
+            dbInstance.deleteObjectStore(this.storeName);
+            this.os = dbInstance.createObjectStore(this.storeName, { keyPath: 'email' });
+            this.createDefaultIndex(this.os);
+            this.multifieldIndex = this.os.createIndex('multifield', 'hobbies', { unique: false, multiEntry: true });
         }
     };
     IndexedDBHandler.prototype.createDefaultIndex = function (objectStoreInstance) {
         console.log('Creating index');
-        objectStoreInstance.createIndex('defaultindex', 'name');
+        this.documentIndex = objectStoreInstance.createIndex('defaultindex', 'name');
     };
     IndexedDBHandler.prototype.addItemToStore = function (object) {
         var transaction = this.workableDB.transaction([this.storeName.toString()], 'readwrite');

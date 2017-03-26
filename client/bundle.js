@@ -50,7 +50,7 @@
 	var Rx_1 = __webpack_require__(2);
 	var indexedDB_1 = __webpack_require__(346);
 	var dbHandler = new indexedDB_1.IndexedDBHandler();
-	var data = { item: { name: 'Simon', email: 'simon@test.be' } };
+	var data = { item: { name: 'Simon', email: 'simon@test.be', hobbies: ['cycling', 'swimming'] } };
 	console.log('Checking suppport for indexedDB >>', indexedDB_1.IndexedDBHandler.checkIndexedDBSupport());
 	Rx_1.Observable.fromEvent(window, 'storage')
 	    .subscribe({
@@ -95,8 +95,12 @@
 	$("#GETALL").click(function () {
 	    dbHandler.getAllData();
 	});
+	$("#GETALLRANGE").click(function () {
+	    dbHandler.getAllDataWithRange('lucas');
+	});
 	$(document).ready(function () {
-	    dbHandler.preloadData([{ item: { name: 'Lucas', email: 'lucas@test.be' } }, { item: { name: 'Peter', email: 'Peter@test.be' } }]);
+	    dbHandler.preloadData([data, { item: { name: 'Lucas', email: 'lucas@test.be', hobbies: ['hiking', 'poker'] } },
+	        { item: { name: 'Peter', email: 'peter@test.be', hobbies: ['playing games', 'hiking'] } }]);
 	    dbHandler.initIndexedDB();
 	});
 	//# sourceMappingURL=client.js.map
@@ -29834,7 +29838,7 @@
 	    IndexedDBHandler.prototype.initIndexedDB = function () {
 	        var _this = this;
 	        if (IndexedDBHandler.checkIndexedDBSupport) {
-	            var database_1 = indexedDB.open('testdbv2', ++this.version);
+	            var database_1 = indexedDB.open('testdbv2', 6);
 	            database_1.onsuccess = function (e) {
 	                console.log('Entering onsucces');
 	                _this.workableDB = database_1.result;
@@ -29883,6 +29887,20 @@
 	            }
 	        };
 	    };
+	    IndexedDBHandler.prototype.getAllDataWithRange = function (upperbound) {
+	        if (!this.os) {
+	            var transaction = this.workableDB.transaction([this.storeName.toString()], 'readwrite');
+	            this.os = transaction.objectStore(this.storeName);
+	        }
+	        if (!this.documentIndex) {
+	            this.documentIndex = this.os.index('defaultindex');
+	        }
+	        var range = IDBKeyRange.upperBound(upperbound);
+	        var cursor = this.documentIndex.openCursor(range);
+	        cursor.onsuccess = function () {
+	            console.log(JSON.stringify(cursor.result['value']));
+	        };
+	    };
 	    IndexedDBHandler.prototype.updateItem = function (data) {
 	        var _this = this;
 	        var response = this.getItem(data.item['email']);
@@ -29904,11 +29922,19 @@
 	            console.log('Creating object store');
 	            this.os = dbInstance.createObjectStore(this.storeName, { keyPath: 'email' });
 	            this.createDefaultIndex(this.os);
+	            this.multifieldIndex = this.os.createIndex('multifield', 'hobbies', { unique: false, multiEntry: true });
+	        }
+	        else {
+	            console.log('Deleting and recreating object store');
+	            dbInstance.deleteObjectStore(this.storeName);
+	            this.os = dbInstance.createObjectStore(this.storeName, { keyPath: 'email' });
+	            this.createDefaultIndex(this.os);
+	            this.multifieldIndex = this.os.createIndex('multifield', 'hobbies', { unique: false, multiEntry: true });
 	        }
 	    };
 	    IndexedDBHandler.prototype.createDefaultIndex = function (objectStoreInstance) {
 	        console.log('Creating index');
-	        objectStoreInstance.createIndex('defaultindex', 'name');
+	        this.documentIndex = objectStoreInstance.createIndex('defaultindex', 'name');
 	    };
 	    IndexedDBHandler.prototype.addItemToStore = function (object) {
 	        var transaction = this.workableDB.transaction([this.storeName.toString()], 'readwrite');

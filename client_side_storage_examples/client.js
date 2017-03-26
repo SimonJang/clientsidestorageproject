@@ -4,7 +4,7 @@ var $ = require("jquery");
 var Rx_1 = require("rxjs/Rx");
 var indexedDB_1 = require("./indexedDB");
 var dbHandler = new indexedDB_1.IndexedDBHandler();
-var data = { item: { name: 'Simon', email: 'simon@test.be' } };
+var data = { item: { name: 'Simon', email: 'simon@test.be', hobbies: ['cycling', 'swimming'] } };
 console.log('Checking suppport for indexedDB >>', indexedDB_1.IndexedDBHandler.checkIndexedDBSupport());
 Rx_1.Observable.fromEvent(window, 'storage')
     .subscribe({
@@ -49,8 +49,12 @@ $("#DELETE").click(function () {
 $("#GETALL").click(function () {
     dbHandler.getAllData();
 });
+$("#GETALLRANGE").click(function () {
+    dbHandler.getAllDataWithRange('lucas');
+});
 $(document).ready(function () {
-    dbHandler.preloadData([{ item: { name: 'Lucas', email: 'lucas@test.be' } }, { item: { name: 'Peter', email: 'Peter@test.be' } }]);
+    dbHandler.preloadData([data, { item: { name: 'Lucas', email: 'lucas@test.be', hobbies: ['hiking', 'poker'] } },
+        { item: { name: 'Peter', email: 'peter@test.be', hobbies: ['playing games', 'hiking'] } }]);
     dbHandler.initIndexedDB();
 });
 //# sourceMappingURL=client.js.map

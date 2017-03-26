@@ -3,11 +3,13 @@ import { AddRequest } from './types/types';
 
 export class IndexedDBHandler {
 
-    dbInstance: IDBDatabase;
-    os: IDBObjectStore;
     storeName = 'testObjectStore'
     version = 1;
     DBName = 'testdbv2';
+    documentIndex: IDBIndex;
+    multifieldIndex: IDBIndex;
+    dbInstance: IDBDatabase;
+    os: IDBObjectStore;
     workableDB: IDBDatabase;
     addRequests: AddRequest[] = []
 
@@ -18,14 +20,14 @@ export class IndexedDBHandler {
     public initIndexedDB() {
         if (IndexedDBHandler.checkIndexedDBSupport) {
 
-            let database: IDBOpenDBRequest = indexedDB.open('testdbv2', ++this.version);
+            let database: IDBOpenDBRequest = indexedDB.open('testdbv2', 6);
 
             // Only available for use from here since callback shows readiness of IndexedDB
             // Checks if there are requests to be processed when IndexedDB is ready
             database.onsuccess = (e) => {
                 console.log('Entering onsucces');
                 this.workableDB = database.result;
-                
+
                 Observable.from(this.addRequests)
                     .subscribe(r => { this.addItemToStore(r) })
             }
@@ -80,6 +82,25 @@ export class IndexedDBHandler {
         }
     }
 
+    // Remember that complex search is not the strongest part of IndexedDB
+    // So beter use other filtering methods to filter the data if needed
+
+    public getAllDataWithRange(upperbound: string) {
+        if(!this.os) {
+            let transaction = this.workableDB.transaction([this.storeName.toString()], 'readwrite');
+            this.os = transaction.objectStore(this.storeName);
+        }
+        if(!this.documentIndex) {
+            this.documentIndex = this.os.index('defaultindex')
+        }
+        const range = IDBKeyRange.upperBound(upperbound);
+        const cursor = this.documentIndex.openCursor(range);
+        
+        cursor.onsuccess = () => {
+            console.log(JSON.stringify(cursor.result['value']));
+        }
+    }
+
     public updateItem(data: AddRequest) {
         
         let response = this.getItem(data.item['email']);
@@ -106,13 +127,23 @@ export class IndexedDBHandler {
             console.log('Creating object store')
             this.os = dbInstance.createObjectStore(this.storeName, { keyPath: 'email' })
             this.createDefaultIndex(this.os);
+            this.multifieldIndex = this.os.createIndex('multifield', 'hobbies', {unique: false, multiEntry: true}) // multiEntry example
         }
+        else {
+            console.log('Deleting and recreating object store')
+            dbInstance.deleteObjectStore(this.storeName)
+            this.os = dbInstance.createObjectStore(this.storeName, { keyPath: 'email' })
+            this.createDefaultIndex(this.os);
+            this.multifieldIndex = this.os.createIndex('multifield', 'hobbies', {unique: false, multiEntry: true}) // multiEntry example
+        }
+        
     }
 
     private createDefaultIndex(objectStoreInstance: IDBObjectStore) {
         console.log('Creating index');
-        objectStoreInstance.createIndex('defaultindex', 'name');
+        this.documentIndex = objectStoreInstance.createIndex('defaultindex', 'name');
     }
+
 
     private addItemToStore(object: AddRequest) {
         let transaction = this.workableDB.transaction([this.storeName.toString()], 'readwrite');
